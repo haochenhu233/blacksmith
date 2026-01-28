@@ -24,32 +24,29 @@ type MockTestLogger struct {
 }
 
 func (l *MockTestLogger) Debugf(format string, args ...interface{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	msg := fmt.Sprintf("[DEBUG] "+format, args...)
+	l.mu.Lock()
 	l.messages = append(l.messages, msg)
+	l.mu.Unlock()
+	// fmt.Println(msg) // Print to console for debugging
 }
 
 func (l *MockTestLogger) Infof(format string, args ...interface{}) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.messages = append(l.messages, fmt.Sprintf("[INFO] "+format, args...))
+	l.mu.Unlock()
 }
 
 func (l *MockTestLogger) Warningf(format string, args ...interface{}) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.messages = append(l.messages, fmt.Sprintf("[WARN] "+format, args...))
+	l.mu.Unlock()
 }
 
 func (l *MockTestLogger) Errorf(format string, args ...interface{}) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.messages = append(l.messages, fmt.Sprintf("[ERROR] "+format, args...))
+	l.mu.Unlock()
 }
 
 //nolint:funlen // This test function is intentionally long for comprehensive testing
