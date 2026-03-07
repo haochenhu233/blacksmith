@@ -393,7 +393,7 @@ func processRelease(release struct {
 	return nil
 }
 
-func GetCreds(instanceID string, plan services.Plan, director bosh.Director, loggerInstance logger.Logger) (interface{}, error) {
+func GetCreds(instanceID string, plan services.Plan, director bosh.Director, deploymentManifest string, loggerInstance logger.Logger) (interface{}, error) {
 	deployment := plan.ID + "-" + instanceID
 
 	vms, err := getDeploymentVMs(director, deployment, loggerInstance)
@@ -406,7 +406,9 @@ func GetCreds(instanceID string, plan services.Plan, director bosh.Director, log
 		return nil, err
 	}
 
-	jobs, dnsname := buildJobsFromVMs(vms, plan, deployment, loggerInstance)
+	networkByJob := extractNetworksByJob(deploymentManifest)
+
+	jobs, dnsname := buildJobsFromVMs(vms, plan, deployment, networkByJob, loggerInstance)
 
 	jobsIfc, err := marshalJobsToInterface(jobs, loggerInstance)
 	if err != nil {
@@ -445,21 +447,52 @@ func setCredentialsEnv(instanceID string, loggerInstance logger.Logger) error {
 	return nil
 }
 
-func buildJobsFromVMs(vms []bosh.VM, plan services.Plan, deployment string, loggerInstance logger.Logger) ([]*services.Job, string) {
+// extractNetworksByJob parses a BOSH deployment manifest and returns a map of instance group name -> network name.
+func extractNetworksByJob(manifestYAML string) map[string]string {
+	result := make(map[string]string)
+
+	if manifestYAML == "" {
+		return result
+	}
+
+	var manifest struct {
+		InstanceGroups []struct {
+			Name     string `yaml:"name"`
+			Networks []struct {
+				Name string `yaml:"name"`
+			} `yaml:"networks"`
+		} `yaml:"instance_groups"`
+	}
+
+	if err := yaml.Unmarshal([]byte(manifestYAML), &manifest); err != nil {
+		return result
+	}
+
+	for _, ig := range manifest.InstanceGroups {
+		if len(ig.Networks) > 0 {
+			// Use the first network for each instance group
+			result[ig.Name] = ig.Networks[0].Name
+		}
+	}
+
+	return result
+}
+
+func buildJobsFromVMs(vms []bosh.VM, plan services.Plan, deployment string, networkByJob map[string]string, loggerInstance logger.Logger) ([]*services.Job, string) {
 	jobs := make([]*services.Job, 0, len(vms))
 	byType := make(map[string]*services.Job)
 
 	var dnsname string
 
-	// Fallback to BOSH_NETWORK if VM doesn't have network info from manifest
+	// Fallback to BOSH_NETWORK if the manifest doesn't have network info for this job
 	defaultNetwork := os.Getenv("BOSH_NETWORK")
 
 	for _, instance := range vms {
-		// Use network from VM (extracted from deployment manifest) or fallback to default
-		network := instance.Network
+		// Use network from manifest (via networkByJob map) or fallback to default
+		network := networkByJob[instance.Job]
 		if network == "" {
 			network = defaultNetwork
-			loggerInstance.Debug("VM %s has no network info, using default BOSH_NETWORK: %s", instance.ID, network)
+			loggerInstance.Debug("VM %s has no network info in manifest, using default BOSH_NETWORK: %s", instance.ID, network)
 		} else {
 			loggerInstance.Debug("VM %s using network from manifest: %s", instance.ID, network)
 		}
