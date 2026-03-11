@@ -1064,10 +1064,34 @@ func (b *Broker) storeBindingCredentials(ctx context.Context, instanceID, bindin
 	return nil
 }
 
+// getDeploymentManifestFromVault reads the deployment manifest stored in Vault for the given instance.
+// Returns the manifest YAML string, or empty string if not found (fallback to BOSH_NETWORK).
+func (b *Broker) getDeploymentManifestFromVault(instanceID string, logger logger.Logger) string {
+	var data map[string]interface{}
+
+	exists, err := b.Vault.Get(context.Background(), instanceID+"/manifest", &data)
+	if err != nil || !exists {
+		logger.Debug("No manifest found in Vault for instance %s, will use default BOSH_NETWORK for DNS", instanceID)
+
+		return ""
+	}
+
+	manifestYAML, ok := data["manifest"].(string)
+	if !ok {
+		logger.Debug("Manifest data in Vault for instance %s is not a string", instanceID)
+
+		return ""
+	}
+
+	return manifestYAML
+}
+
 func (b *Broker) getBaseCredentials(instanceID string, plan services.Plan, logger logger.Logger) (interface{}, error) {
 	logger.Debug("Retrieving base credentials using GetCreds")
 
-	creds, err := manifest.GetCreds(instanceID, plan, b.BOSH, logger)
+	deploymentManifest := b.getDeploymentManifestFromVault(instanceID, logger)
+
+	creds, err := manifest.GetCreds(instanceID, plan, b.BOSH, deploymentManifest, logger)
 	if err != nil {
 		logger.Error("Failed to retrieve base credentials: %s", err)
 
@@ -1677,7 +1701,9 @@ func (b *Broker) processCredentials(ctx context.Context, instanceID string, deta
 
 	logger.Debug("fetching instance credentials directly from BOSH")
 
-	creds, err := manifest.GetCreds(instanceID, plan, b.BOSH, logger)
+	deploymentManifest := b.getDeploymentManifestFromVault(instanceID, logger)
+
+	creds, err := manifest.GetCreds(instanceID, plan, b.BOSH, deploymentManifest, logger)
 	if err != nil {
 		return fmt.Errorf("failed to get credentials: %w", err)
 	}
@@ -1728,7 +1754,9 @@ func (b *Broker) verifyCredentialStorage(ctx context.Context, instanceID string,
 func (b *Broker) retryCredentialStorage(ctx context.Context, instanceID string, plan *services.Plan, logger logger.Logger) error {
 	logger.Info("Attempting to re-fetch credentials from BOSH")
 
-	creds2, err := manifest.GetCreds(instanceID, *plan, b.BOSH, logger)
+	deploymentManifest := b.getDeploymentManifestFromVault(instanceID, logger)
+
+	creds2, err := manifest.GetCreds(instanceID, *plan, b.BOSH, deploymentManifest, logger)
 	if err != nil {
 		return fmt.Errorf("failed to verify credential storage and unable to re-fetch: %w", err)
 	}
@@ -2081,7 +2109,9 @@ func (b *Broker) getInstanceCredentials(instanceID string, plan *services.Plan, 
 	logger.Info("Retrieving credentials for instance %s", instanceID)
 	logger.Debug("Calling GetCreds for plan %s", plan.Name)
 
-	creds, err := manifest.GetCreds(instanceID, *plan, b.BOSH, logger)
+	deploymentManifest := b.getDeploymentManifestFromVault(instanceID, logger)
+
+	creds, err := manifest.GetCreds(instanceID, *plan, b.BOSH, deploymentManifest, logger)
 	if err != nil {
 		logger.Error("Failed to retrieve credentials: %s", err)
 
@@ -2264,7 +2294,9 @@ func (b *Broker) handleRabbitMQUnbind(ctx context.Context, instanceID, bindingID
 func (b *Broker) getRabbitMQCredentials(_ context.Context, instanceID string, plan *services.Plan, logger logger.Logger) (map[string]interface{}, error) {
 	logger.Debug("Retrieving admin credentials for RabbitMQ instance")
 
-	creds, err := manifest.GetCreds(instanceID, *plan, b.BOSH, logger)
+	deploymentManifest := b.getDeploymentManifestFromVault(instanceID, logger)
+
+	creds, err := manifest.GetCreds(instanceID, *plan, b.BOSH, deploymentManifest, logger)
 	if err != nil {
 		logger.Error("Failed to retrieve credentials: %s", err)
 
