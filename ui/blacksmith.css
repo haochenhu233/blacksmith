@@ -10744,6 +10744,48 @@ span.config-type.resurrection {
   cursor: not-allowed;
 }
 
+#upgrade .upgrade-range-selection {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-primary);
+}
+
+#upgrade .upgrade-range-selection label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+
+#upgrade .upgrade-range-selection .range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#upgrade .upgrade-range-selection input[type="number"] {
+  width: 70px;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border-primary);
+  border-radius: 0.375rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+#upgrade .upgrade-range-selection input[type="number"]:focus {
+  outline: none;
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+#upgrade .upgrade-range-selection .range-separator {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
 #upgrade .upgrade-instances {
   flex: 1;
   overflow-y: auto;
@@ -10825,6 +10867,18 @@ span.config-type.resurrection {
   height: 16px;
   cursor: pointer;
   accent-color: #2563eb;
+}
+
+#upgrade .upgrade-instance-row-number {
+  display: inline-block;
+  width: 2.5rem;
+  text-align: right;
+  padding-right: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 #upgrade .upgrade-instance-info {
