@@ -2214,7 +2214,7 @@
           <input type="number" id="upgrade-range-start" min="1" placeholder="Start" title="Start row number">
           <span class="range-separator">to</span>
           <input type="number" id="upgrade-range-end" min="1" placeholder="End" title="End row number">
-          <button id="upgrade-select-range" class="btn-secondary">Select Range</button>
+          <button id="upgrade-select-range" class="btn-primary">Select Range</button>
         </div>
       </div>
     `;
